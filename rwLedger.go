@@ -2,15 +2,34 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
+type GetStateError struct {
+	err error
+}
+
+func (e GetStateError) Error() string {
+	return e.err.Error()
+}
+
+type JsonUnmarshalError struct {
+	err error
+}
+
+func (e JsonUnmarshalError) Error() string {
+	return e.err.Error()
+}
+
 func readFromLedger(ctx contractapi.TransactionContextInterface, key string) error {
+	log.Println("Entering readFromLedger with key: " + key + "...")
 	assetJSON, err := ctx.GetStub().GetState(key)
 	if err != nil {
-		return err
+		return GetStateError{err}
 	}
+	log.Println(string(assetJSON))
 
 	if key == kittyIndexToOwnerNAME {
 		err = json.Unmarshal(assetJSON, &kittyIndexToOwner)
@@ -25,13 +44,14 @@ func readFromLedger(ctx contractapi.TransactionContextInterface, key string) err
 		err = json.Unmarshal(assetJSON, &kitties)
 	}
 	if err != nil {
-		return err
+		return JsonUnmarshalError{err}
 	}
 
 	return nil
 }
 
 func writeToLedger(ctx contractapi.TransactionContextInterface, key string) error {
+	log.Println("Entering writeToLedger with key" + key + "...")
 	var assetJSON []byte
 	var err error
 
@@ -51,6 +71,7 @@ func writeToLedger(ctx contractapi.TransactionContextInterface, key string) erro
 		return err
 	}
 
+	log.Println(string(assetJSON))
 	if err = ctx.GetStub().PutState(key, assetJSON); err != nil {
 		return err
 	}

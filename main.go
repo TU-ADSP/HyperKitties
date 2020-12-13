@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
@@ -42,7 +42,7 @@ var cooldowns = []time.Duration{
 	7 * time.Hour,
 }
 
-var kitties KittyList = KittyList{Kitty{}}
+var kitties = KittyList{Kitty{}}
 
 const kittiesNAME = "kitties"
 
@@ -58,57 +58,39 @@ var sireAllowedToAddress = []string{""}
 
 const sireAllowedToAddressNAME = "kittyIndexToAddress"
 
-func transfer(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
-	if err := readFromLedger(ctx, kittyIndexToOwnerNAME); err != nil {
-		return err
-	}
-	kittyIndexToOwner[kittyID] = to
-	if err := writeToLedger(ctx, kittyIndexToOwnerNAME); err != nil {
-		return err
-	}
+var g_event = map[string]interface{}{}
 
-	if from != "" {
-		if err := readFromLedger(ctx, kittyIndexToApprovedNAME); err != nil {
-			return err
-		}
-		kittyIndexToApproved[kittyID] = ""
-		if err := writeToLedger(ctx, kittyIndexToApprovedNAME); err != nil {
-			return err
-		}
-		if err := readFromLedger(ctx, sireAllowedToAddressNAME); err != nil {
-			return err
-		}
-		sireAllowedToAddress[kittyID] = ""
-		if err := writeToLedger(ctx, sireAllowedToAddressNAME); err != nil {
-			return err
-		}
-	}
+func transfer(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
+	kittyIndexToOwner[kittyID] = to
+
+	kittyIndexToApproved[kittyID] = ""
+	sireAllowedToAddress[kittyID] = ""
 
 	payload := map[string]interface{}{"from": from, "to": to, "kittyID": kittyID}
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	if err := ctx.GetStub().SetEvent("Transfer", jsonPayload); err != nil {
-		return err
-	}
+	g_event["Transfer"] = payload
 
 	return nil
 }
 
 func createKitty(ctx contractapi.TransactionContextInterface, matronID, sireID, generation, genes uint64, owner string) (uint64, error) {
-	if err := readFromLedger(ctx, kittiesNAME); err != nil {
-		return 0, err
-	}
 	cooldownIndex := uint8(generation / 2)
 	if cooldownIndex > 13 {
 		cooldownIndex = 13
 	}
 
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return 0, err
+	}
+	now, err := ptypes.Timestamp(txTimestamp)
+	if err != nil {
+		return 0, err
+	}
+
 	kitty := Kitty{
 		Genes:         genes,
-		BirthTime:     time.Now(),
-		CooldownEnd:   time.Now().Add(cooldowns[cooldownIndex]),
+		BirthTime:     now,
+		CooldownEnd:   now.Add(cooldowns[cooldownIndex]),
 		MatronID:      matronID,
 		SireID:        sireID,
 		SiringWithID:  0,
@@ -118,14 +100,12 @@ func createKitty(ctx contractapi.TransactionContextInterface, matronID, sireID, 
 	kitties = append(kitties, kitty)
 	newKittenID := uint64(len(kitties) - 1)
 
+	kittyIndexToOwner = append(kittyIndexToOwner, "")
+	kittyIndexToApproved = append(kittyIndexToApproved, "")
+	sireAllowedToAddress = append(sireAllowedToAddress, "")
+
 	payload := map[string]interface{}{"owner": owner, "newKittenID": newKittenID, "matronID": matronID, "sireID": sireID, "genes": genes}
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		panic(err)
-	}
-	if err := ctx.GetStub().SetEvent("Birth", jsonPayload); err != nil {
-		return 0, err
-	}
+	g_event["Birth"] = payload
 
 	if err := transfer(ctx, "", owner, newKittenID); err != nil {
 		return 0, err
@@ -143,8 +123,17 @@ func (c *KittyContract) CreateKitty(ctx contractapi.TransactionContextInterface,
 	return err
 }
 
+func (c *KittyContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+	log.Println("Entering InitLedger: Doing essentially nothing...")
+	return nil
+}
+
 func main() {
-	assetChaincode, err := contractapi.NewChaincode(&KittyContract{})
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	ktct := KittyContract{}
+	ktct.BeforeTransaction = BeforeTransaction
+	ktct.AfterTransaction = AfterTransaction
+	assetChaincode, err := contractapi.NewChaincode(&ktct)
 	if err != nil {
 		log.Panicf("Error creating HyperKitty chaincode: %v", err)
 	}
