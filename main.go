@@ -119,11 +119,11 @@ func owns(kittyID uint64, owner string) (bool, error) {
 	return false, nil
 }
 
-func approvedFor(kittyId uint64, account string) (bool, error) {
+func approvedFor(kittyID uint64, account string) (bool, error) {
 	return false, nil
 }
 
-func approve(kittdyId uint64, account string) error {
+func approve(kittdyID uint64, account string) error {
 	return nil
 }
 
@@ -131,7 +131,7 @@ func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, to
 	return nil
 }
 
-func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kittdyId uint64, account string) error {
+func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kittdyID uint64, account string) error {
 	return nil
 }
 
@@ -139,7 +139,7 @@ func (c *KittyContract) TotalSuppy(ctx contractapi.TransactionContextInterface) 
 	return 0
 }
 
-func (c *KittyContract) OwnerOf(ctx contractapi.TransactionContextInterface, kittyId uint64) (string, error) {
+func (c *KittyContract) OwnerOf(ctx contractapi.TransactionContextInterface, kittyID uint64) (string, error) {
 	return "", nil
 }
 
@@ -155,27 +155,27 @@ func isReadyToGiveBirth(matron Kitty) (bool, error) {
 	return true, nil
 }
 
-func isReadyToBreed(kittyId uint64) (bool, error) {
+func isReadyToBreed(kittyID uint64) (bool, error) {
 	return false, nil
 }
 
-func (c *KittyContract) IsReadyToBreed(kittyId uint64) (bool, error) {
+func (c *KittyContract) IsReadyToBreed(kittyID uint64) (bool, error) {
 	return false, nil
 }
 
-func isSiringPermitted(kittyId uint64) (bool, error) {
+func isSiringPermitted(matronID, sireID uint64) (bool, error) {
 	return true, nil
 }
 
-func triggerCooldown(kittyId uint64) error {
+func triggerCooldown(kittyID uint64) error {
 	return nil
 }
 
-func (c *KittyContract) ApproveSiring(ctx contractapi.TransactionContextInterface, kittyId uint64, siringPartner string) error {
+func (c *KittyContract) ApproveSiring(ctx contractapi.TransactionContextInterface, kittyID uint64, siringPartner string) error {
 	return nil
 }
 
-func isPregnant(kittyId uint64) (bool, error) {
+func isPregnant(kittyID uint64) (bool, error) {
 	return false, nil
 }
 
