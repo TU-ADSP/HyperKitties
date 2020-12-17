@@ -147,11 +147,11 @@ func pregnantKitties() uint64 {
 	return 0
 }
 
-func _isReadyToBreed(kittyId uint64) bool {
+func isReadyToBreed(kittyId uint64) bool {
 	return true
 }
 
-func _isSiringPermitted(kittyId uint64) bool {
+func isSiringPermitted(kittyId uint64) bool {
 	return true
 }
 
@@ -167,7 +167,7 @@ func isReadyToGiveBirth(kittyId uint64) bool {
 	return true
 }
 
-func isReadyToBreed(kittyId uint64) bool {
+func IsReadyToBreed(ctx contractapi.TransactionContextInterface, kittyId uint64) bool {
 	return true
 }
 
@@ -175,7 +175,7 @@ func isPregnant(kittyId uint64) bool {
 	return true
 }
 
-func _isValidMatingPair(sire uint64, matron uint64) bool {
+func isValidMatingPair(sire uint64, matron uint64) bool {
 	return true
 }
 
@@ -183,15 +183,15 @@ func canBreedWith(sire uint64, matron uint64) bool {
 	return true
 }
 
-func _breedWith(sire uint64, matron uint64) {
+func breedWith(sire uint64, matron uint64) {
 	return
 }
 
-func breedWithAuto(sire uint64, matron uint64) {
+func BreedWithAuto(ctx contractapi.TransactionContextInterface, sire uint64, matron uint64) {
 	return
 }
 
-func giveBirth(kittyId uint64) {
+func GiveBirth(ctx contractapi.TransactionContextInterface, kittyId uint64) {
 	return
 }
 
