@@ -216,8 +216,25 @@ func isValidMatingPair(sireID uint64, matronID uint64) (bool, error) {
 	return true, nil
 }
 
-// is never called
-func canBreedWith(sire uint64, matron uint64) (bool, error) {
+func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sireID uint64, matronID uint64) (bool, error) {
+	if int(matronID) >= len(kitties) || matronID == 0 {
+		return false, fmt.Errorf("No matron with this ID %d available.", matronID)
+	}
+
+	if int(sireID) >= len(kitties) || sireID == 0 {
+		return false, fmt.Errorf("No sire with this ID %d available.", sireID)
+	}
+
+	ok, err := isValidMatingPair(martonID, sireID)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	ok, err = isSiringPermitted(martonID, sireID)
+	if err != nil || !ok {
+		return false, err
+	}
+
 	return true, nil
 }
 
