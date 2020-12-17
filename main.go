@@ -114,7 +114,92 @@ func createKitty(ctx contractapi.TransactionContextInterface, matronID, sireID, 
 	return newKittenID, nil
 }
 
-func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
+func owns(kittyID uint64, owner string) (bool, error) {
+	return false, nil
+}
+
+func approvedFor(kittyID uint64, account string) (bool, error) {
+	return false, nil
+}
+
+func approve(kittdyID uint64, account string) error {
+	return nil
+}
+
+func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, to string, kittyID uint64) error {
+	return nil
+}
+
+func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kittdyID uint64, account string) error {
+	return nil
+}
+
+func (c *KittyContract) TotalSuppy(ctx contractapi.TransactionContextInterface) uint64 {
+	return 0
+}
+
+func (c *KittyContract) OwnerOf(ctx contractapi.TransactionContextInterface, kittyID uint64) (string, error) {
+	return "", nil
+}
+
+func (c *KittyContract) TokensOfOwner(owner string) ([]uint64, error) {
+	return []uint64{}, nil
+}
+
+func (c *KittyContract) PregnantKitties() (uint64, error) {
+	return 0, nil
+}
+
+func isReadyToGiveBirth(matron Kitty) (bool, error) {
+	return true, nil
+}
+
+func isReadyToBreed(kittyID uint64) (bool, error) {
+	return false, nil
+}
+
+func (c *KittyContract) IsReadyToBreed(kittyID uint64) (bool, error) {
+	return false, nil
+}
+
+func isSiringPermitted(matronID, sireID uint64) (bool, error) {
+	return true, nil
+}
+
+func triggerCooldown(kittyID uint64) error {
+	return nil
+}
+
+func (c *KittyContract) ApproveSiring(ctx contractapi.TransactionContextInterface, kittyID uint64, siringPartner string) error {
+	return nil
+}
+
+func isPregnant(kittyID uint64) (bool, error) {
+	return false, nil
+}
+
+func isValidMatingPair(sire uint64, matron uint64) (bool, error) {
+	return true, nil
+}
+
+func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sire uint64, matron uint64) (bool, error) {
+	return true, nil
+}
+
+func breedWith(sire uint64, matron uint64) error {
+	return nil
+}
+
+func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterface, sireID uint64, matronID uint64) error {
+	return nil
+}
+
+func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, matronID uint64) error {
+	return nil
+}
+
+func (c *KittyContract) TransferFrom(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
+	// TODO (hb237): extend the functionality of this function to match the ethereum implementation
 	return transfer(ctx, from, to, kittyID)
 }
 
