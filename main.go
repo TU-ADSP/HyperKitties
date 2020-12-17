@@ -182,7 +182,7 @@ func isValidMatingPair(sire uint64, matron uint64) (bool, error) {
 	return true, nil
 }
 
-func canBreedWith(sire uint64, matron uint64) (bool, error) {
+func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sire uint64, matron uint64) (bool, error) {
 	return true, nil
 }
 
