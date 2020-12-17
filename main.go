@@ -225,12 +225,12 @@ func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface
 		return false, fmt.Errorf("No sire with this ID %d available.", sireID)
 	}
 
-	ok, err := isValidMatingPair(martonID, sireID)
+	ok, err := isValidMatingPair(matronID, sireID)
 	if err != nil || !ok {
 		return false, err
 	}
 
-	ok, err = isSiringPermitted(martonID, sireID)
+	ok, err = isSiringPermitted(matronID, sireID)
 	if err != nil || !ok {
 		return false, err
 	}
@@ -248,7 +248,6 @@ func breedWith(sireID uint64, matronID uint64) error {
 	}
 
 	matron := kitties[matronID]
-	//sire := kitties[sireID]
 
 	matron.SiringWithID = sireID
 	triggerCooldown(matronID)
