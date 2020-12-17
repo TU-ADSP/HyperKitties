@@ -179,7 +179,7 @@ func isPregnant(kittyID uint64) (bool, error) {
 	return false, nil
 }
 
-func isValidMatingPair(sireID uint64, matronID uint64) (bool, error) {
+func isValidMatingPair(sireID, matronID uint64) (bool, error) {
 	if int(matronID) >= len(kitties) {
 		return false, fmt.Errorf("No kitty with this ID %d available.", matronID)
 	}
@@ -216,7 +216,7 @@ func isValidMatingPair(sireID uint64, matronID uint64) (bool, error) {
 	return true, nil
 }
 
-func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sireID uint64, matronID uint64) (bool, error) {
+func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sireID, matronID uint64) (bool, error) {
 	if int(matronID) >= len(kitties) || matronID == 0 {
 		return false, fmt.Errorf("No matron with this ID %d available.", matronID)
 	}
@@ -238,7 +238,7 @@ func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface
 	return true, nil
 }
 
-func breedWith(sireID uint64, matronID uint64) error {
+func breedWith(sireID, matronID uint64) error {
 	if int(matronID) >= len(kitties) {
 		return fmt.Errorf("No kitty with this ID %d available.", matronID)
 	}
@@ -263,7 +263,7 @@ func breedWith(sireID uint64, matronID uint64) error {
 	return nil
 }
 
-func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterface, sireID uint64, matronID uint64) error {
+func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterface, sireID, matronID uint64) error {
 	if int(matronID) >= len(kitties) {
 		return fmt.Errorf("No kitty with this ID %d available.", matronID)
 	}
