@@ -114,6 +114,87 @@ func createKitty(ctx contractapi.TransactionContextInterface, matronID, sireID, 
 	return newKittenID, nil
 }
 
+func _owns(kittyID uint64, owner string) bool {
+	return true
+}
+
+func _approvedFor(kittyId uint64, account string) bool {
+	return true
+}
+
+func _approve(kittdyId uint64, account string) {
+	// Emit Approval
+	return
+}
+
+func transferFrom(from, to string, kittyId uint64) {
+	return
+}
+
+func totalSuppy() uint64 {
+	return 0
+}
+
+func ownerOf(kittyId uint64) string {
+	return ""
+}
+
+func tokensOfOwner(owner string) []uint64 {
+	return []uint64{}
+}
+
+func pregnantKitties() uint64 {
+	return 0
+}
+
+func _isReadyToBreed(kittyId uint64) bool {
+	return true
+}
+
+func _isSiringPermitted(kittyId uint64) bool {
+	return true
+}
+
+func triggerCooldown(kittyId uint64) {
+	return
+}
+
+func approveSiring(kittyId uint64, siringPartner string) {
+	return
+}
+
+func isReadyToGiveBirth(kittyId uint64) bool {
+	return true
+}
+
+func isReadyToBreed(kittyId uint64) bool {
+	return true
+}
+
+func isPregnant(kittyId uint64) bool {
+	return true
+}
+
+func _isValidMatingPair(sire uint64, matron uint64) bool {
+	return true
+}
+
+func canBreedWith(sire uint64, matron uint64) bool {
+	return true
+}
+
+func _breedWith(sire uint64, matron uint64) {
+	return
+}
+
+func breedWithAuto(sire uint64, matron uint64) {
+	return
+}
+
+func giveBirth(kittyId uint64) {
+	return
+}
+
 func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
 	return transfer(ctx, from, to, kittyID)
 }
