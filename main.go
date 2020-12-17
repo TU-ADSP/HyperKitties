@@ -147,11 +147,11 @@ func pregnantKitties() uint64 {
 	return 0
 }
 
-func _isReadyToBreed(kittyId uint64) bool {
+func isReadyToBreed(kittyId uint64) bool {
 	return true
 }
 
-func _isSiringPermitted(kittyId uint64) bool {
+func isSiringPermitted(kittyId uint64) bool {
 	return true
 }
 
@@ -167,7 +167,7 @@ func isReadyToGiveBirth(kittyId uint64) bool {
 	return true
 }
 
-func isReadyToBreed(kittyId uint64) bool {
+func IsReadyToBreed(ctx contractapi.TransactionContextInterface, kittyId uint64) bool {
 	return true
 }
 
@@ -175,7 +175,7 @@ func isPregnant(kittyId uint64) bool {
 	return true
 }
 
-func _isValidMatingPair(sire uint64, matron uint64) bool {
+func isValidMatingPair(sire uint64, matron uint64) bool {
 	return true
 }
 
@@ -183,26 +183,41 @@ func canBreedWith(sire uint64, matron uint64) bool {
 	return true
 }
 
-func _breedWith(sire uint64, matron uint64) {
+func breedWith(sire uint64, matron uint64) {
 	return
 }
 
-func breedWithAuto(sire uint64, matron uint64) {
+func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterface, sire uint64, matron uint64) {
 	return
 }
 
-func giveBirth(kittyID uint64) {
-	try{
-		matron := kitties[kittyID]
-	} catch(err Error) {
-		
+func mixGenes(matronGenes, sireGenes uint64) uint64 {
+	// ^ will implement xor
+	return matronGenes ^ sireGenes
+}
+
+func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, kittyID uint64) {
+
+	if int(kittyID) >= len(kitties) {
+		return
 	}
-	
+
+	matron := kitties[kittyID]
+
 	if !isReadyToGiveBirth(kittyID) {
 		return
 	}
 
-	return
+	sireID := matron.SireID
+	sire := kitties[sireID]
+
+	parentGeneration := matron.Generation
+	if parentGeneration < sire.Generation {
+		parentGeneration = sire.Generation
+	}
+
+	childGenes = mixGenes(matron.Genes, sire.Genes)
+	createKitty(ctx)
 }
 
 func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
