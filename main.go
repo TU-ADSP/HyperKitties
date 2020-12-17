@@ -191,7 +191,17 @@ func breedWithAuto(sire uint64, matron uint64) {
 	return
 }
 
-func giveBirth(kittyId uint64) {
+func giveBirth(kittyID uint64) {
+	try{
+		matron := kitties[kittyID]
+	} catch(err Error) {
+		
+	}
+	
+	if !isReadyToGiveBirth(kittyID) {
+		return
+	}
+
 	return
 }
 
