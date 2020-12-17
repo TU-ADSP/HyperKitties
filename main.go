@@ -309,7 +309,7 @@ func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, m
 
 	matron := kitties[matronID]
 
-	if !isReadyToGiveBirth(matronID) {
+	if ok, err := isReadyToGiveBirth(matron); err != nil || !ok {
 		return 0, fmt.Errorf("Matron is not yet ready to give birth.")
 	}
 
