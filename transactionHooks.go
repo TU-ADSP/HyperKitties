@@ -35,6 +35,13 @@ func BeforeTransaction(ctx contractapi.TransactionContextInterface) error {
 			return err
 		}
 	}
+	if err := readFromLedger(ctx, pregnantKittiesNAME); err != nil {
+		if serr, ok := err.(GetStateError); ok {
+			log.Println(serr)
+		} else {
+			return err
+		}
+	}
 
 	g_event = make(map[string]interface{})
 
@@ -52,6 +59,9 @@ func AfterTransaction(ctx contractapi.TransactionContextInterface) error {
 		return err
 	}
 	if err := writeToLedger(ctx, sireAllowedToAddressNAME); err != nil {
+		return err
+	}
+	if err := writeToLedger(ctx, pregnantKittiesNAME); err != nil {
 		return err
 	}
 

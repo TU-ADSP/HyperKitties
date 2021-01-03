@@ -43,6 +43,9 @@ func readFromLedger(ctx contractapi.TransactionContextInterface, key string) err
 	if key == kittiesNAME {
 		err = json.Unmarshal(assetJSON, &kitties)
 	}
+	if key == pregnantKittiesNAME {
+		err = json.Unmarshal(assetJSON, &pregnantKitties)
+	}
 	if err != nil {
 		return JsonUnmarshalError{err}
 	}
@@ -66,6 +69,9 @@ func writeToLedger(ctx contractapi.TransactionContextInterface, key string) erro
 	}
 	if key == kittiesNAME {
 		assetJSON, err = json.Marshal(kitties)
+	}
+	if key == pregnantKittiesNAME {
+		assetJSON, err = json.Marshal(pregnantKitties)
 	}
 	if err != nil {
 		return err

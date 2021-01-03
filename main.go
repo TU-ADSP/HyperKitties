@@ -59,6 +59,10 @@ var sireAllowedToAddress = []string{""}
 
 const sireAllowedToAddressNAME = "kittyIndexToAddress"
 
+var pregnantKitties uint64 = 0
+
+const pregnantKittiesNAME = "pregnantKitties"
+
 var g_event = map[string]interface{}{}
 
 func transfer(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
@@ -151,32 +155,101 @@ func (c *KittyContract) PregnantKitties() (uint64, error) {
 	return 0, nil
 }
 
-func isReadyToGiveBirth(matron Kitty) (bool, error) {
-	return true, nil
+func isReadyToGiveBirth(ctx contractapi.TransactionContextInterface, matron Kitty) (bool, error) {
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return false, err
+	}
+	now, err := ptypes.Timestamp(txTimestamp)
+	if err != nil {
+		return false, err
+	}
+
+	return (matron.SiringWithID != 0) && (matron.CooldownEnd.Before(now)), nil
 }
 
-func isReadyToBreed(kittyID uint64) (bool, error) {
-	return false, nil
+func isReadyToBreed(ctx contractapi.TransactionContextInterface, kitty Kitty) (bool, error) {
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return false, err
+	}
+	now, err := ptypes.Timestamp(txTimestamp)
+	if err != nil {
+		return false, err
+	}
+
+	return kitty.SiringWithID == 0 && kitty.CooldownEnd.Before(now), nil
 }
 
-func (c *KittyContract) IsReadyToBreed(kittyID uint64) (bool, error) {
-	return false, nil
+func (c *KittyContract) IsReadyToBreed(ctx contractapi.TransactionContextInterface, kittyID uint64) (bool, error) {
+	if !(kittyID > 0) || int(kittyID) >= len(kitties) {
+		return false, fmt.Errorf("No kitty with this ID %d available.", kittyID)
+	}
+
+	kitty := kitties[kittyID]
+
+	return isReadyToBreed(ctx, kitty)
 }
 
 func isSiringPermitted(matronID, sireID uint64) (bool, error) {
-	return true, nil
+	matronOwner := kittyIndexToOwner[matronID]
+	sireOwner := kittyIndexToOwner[sireID]
+
+	return matronOwner == sireOwner || sireAllowedToAddress[sireID] == matronOwner, nil
 }
 
-func triggerCooldown(kittyID uint64) error {
+func triggerCooldown(ctx contractapi.TransactionContextInterface, kittyID uint64) error {
+	if int(kittyID) >= len(kitties) {
+		return fmt.Errorf("No kitty with this ID %d available.", kittyID)
+	}
+
+	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return err
+	}
+	now, err := ptypes.Timestamp(txTimestamp)
+	if err != nil {
+		return err
+	}
+
+	cooldownIndex := kitties[kittyID].CooldownIndex
+
+	kitties[kittyID].CooldownEnd = now.Add(cooldowns[cooldownIndex])
+
+	if cooldownIndex < 13 {
+		kitties[kittyID].CooldownIndex = cooldownIndex + 1
+	}
+
 	return nil
 }
 
 func (c *KittyContract) ApproveSiring(ctx contractapi.TransactionContextInterface, kittyID uint64, siringPartner string) error {
+	clientID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return err
+	}
+
+	ok, err := owns(kittyID, clientID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("Caller must be the owner of the matron kitty.")
+	}
+
+	sireAllowedToAddress[kittyID] = clientID
+
 	return nil
 }
 
-func isPregnant(kittyID uint64) (bool, error) {
-	return false, nil
+func (c *KittyContract) IsPregnant(ctx contractapi.TransactionContextInterface, kittyID uint64) (bool, error) {
+	if !(kittyID > 0) || int(kittyID) >= len(kitties) {
+		return false, fmt.Errorf("No kitty with this ID %d available.", kittyID)
+	}
+
+	kitty := kitties[kittyID]
+
+	return kitty.SiringWithID != 0, nil
 }
 
 func isValidMatingPair(sireID, matronID uint64) (bool, error) {
@@ -238,7 +311,7 @@ func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface
 	return true, nil
 }
 
-func breedWith(sireID, matronID uint64) error {
+func breedWith(ctx contractapi.TransactionContextInterface, sireID, matronID uint64) error {
 	if int(matronID) >= len(kitties) {
 		return fmt.Errorf("No kitty with this ID %d available.", matronID)
 	}
@@ -250,11 +323,13 @@ func breedWith(sireID, matronID uint64) error {
 	matron := kitties[matronID]
 
 	matron.SiringWithID = sireID
-	triggerCooldown(matronID)
-	triggerCooldown(sireID)
+	triggerCooldown(ctx, matronID)
+	triggerCooldown(ctx, sireID)
 
 	sireAllowedToAddress[sireID] = ""
 	sireAllowedToAddress[matronID] = ""
+
+	pregnantKitties++
 
 	owner := kittyIndexToOwner[matronID]
 
@@ -278,6 +353,8 @@ func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterfac
 	}
 
 	matronOwner := kittyIndexToOwner[matronID]
+	matron := kitties[matronID]
+	sire := kitties[sireID]
 
 	if matronOwner != clientID {
 		return fmt.Errorf("Caller must be the owner of the matron kitty.")
@@ -287,11 +364,11 @@ func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("Siring is not permitted for marton %d and sire %d.", matronID, sireID)
 	}
 
-	if ok, err := isReadyToBreed(matronID); err != nil || !ok {
+	if ok, err := isReadyToBreed(ctx, matron); err != nil || !ok {
 		return fmt.Errorf("Provided marton with id %d is not ready to breed.", matronID)
 	}
 
-	if ok, err := isReadyToBreed(sireID); err != nil || !ok {
+	if ok, err := isReadyToBreed(ctx, sire); err != nil || !ok {
 		return fmt.Errorf("Provided sire with id %d is not ready to breed.", sireID)
 	}
 
@@ -299,7 +376,7 @@ func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("Matron with id %d and sire with id %d are no valid mating pair. Shame on you! Don't try to breed these cats.", matronID, sireID)
 	}
 
-	return breedWith(sireID, matronID)
+	return breedWith(ctx, sireID, matronID)
 }
 
 func mixGenes(matronGenes, sireGenes uint64) uint64 {
@@ -313,7 +390,7 @@ func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, m
 
 	matron := kitties[matronID]
 
-	if ok, err := isReadyToGiveBirth(matron); err != nil || !ok {
+	if ok, err := isReadyToGiveBirth(ctx, matron); err != nil || !ok {
 		return 0, fmt.Errorf("Matron is not yet ready to give birth.")
 	}
 
@@ -333,6 +410,8 @@ func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, m
 	}
 
 	matron.SiringWithID = 0
+
+	pregnantKitties--
 
 	return kittyID, nil
 }
