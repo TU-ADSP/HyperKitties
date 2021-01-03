@@ -198,7 +198,7 @@ func isValidMatingPair(sireID, matronID uint64) (bool, error) {
 	if matron.MatronID == sireID || matron.SireID == sireID {
 		return false, nil
 	}
-	if sire.MatronID == sireID || sire.SireID == sireID {
+	if sire.MatronID == matronID || sire.SireID == matronID {
 		return false, nil
 	}
 
@@ -283,6 +283,10 @@ func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("Caller must be the owner of the matron kitty.")
 	}
 
+	if ok, err := isSiringPermitted(matronID, sireID); err != nil || !ok {
+		return fmt.Errorf("Siring is not permitted for marton %d and sire %d.", matronID, sireID)
+	}
+
 	if ok, err := isReadyToBreed(matronID); err != nil || !ok {
 		return fmt.Errorf("Provided marton with id %d is not ready to breed.", matronID)
 	}
@@ -313,7 +317,7 @@ func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, m
 		return 0, fmt.Errorf("Matron is not yet ready to give birth.")
 	}
 
-	sireID := matron.SireID
+	sireID := matron.SiringWithID
 	sire := kitties[sireID]
 
 	parentGeneration := matron.Generation
