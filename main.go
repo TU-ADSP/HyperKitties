@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -178,24 +179,162 @@ func isPregnant(kittyID uint64) (bool, error) {
 	return false, nil
 }
 
-func isValidMatingPair(sire uint64, matron uint64) (bool, error) {
+func isValidMatingPair(sireID, matronID uint64) (bool, error) {
+	if int(matronID) >= len(kitties) {
+		return false, fmt.Errorf("No kitty with this ID %d available.", matronID)
+	}
+
+	if int(sireID) >= len(kitties) {
+		return false, fmt.Errorf("No kitty with this ID %d available.", sireID)
+	}
+
+	if sireID == matronID {
+		return false, nil
+	}
+
+	matron := kitties[matronID]
+	sire := kitties[sireID]
+
+	if matron.MatronID == sireID || matron.SireID == sireID {
+		return false, nil
+	}
+	if sire.MatronID == matronID || sire.SireID == matronID {
+		return false, nil
+	}
+
+	if sire.Generation == 0 || matron.Generation == 0 {
+		return true, nil
+	}
+
+	if sire.MatronID == matron.MatronID || sire.MatronID == matron.SireID {
+		return false, nil
+	}
+	if sire.SireID == matron.MatronID || sire.SireID == matron.SireID {
+		return false, nil
+	}
+
 	return true, nil
 }
 
-func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sire uint64, matron uint64) (bool, error) {
+func (c *KittyContract) CanBreedWith(ctx contractapi.TransactionContextInterface, sireID, matronID uint64) (bool, error) {
+	if int(matronID) >= len(kitties) || matronID == 0 {
+		return false, fmt.Errorf("No matron with this ID %d available.", matronID)
+	}
+
+	if int(sireID) >= len(kitties) || sireID == 0 {
+		return false, fmt.Errorf("No sire with this ID %d available.", sireID)
+	}
+
+	ok, err := isValidMatingPair(matronID, sireID)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	ok, err = isSiringPermitted(matronID, sireID)
+	if err != nil || !ok {
+		return false, err
+	}
+
 	return true, nil
 }
 
-func breedWith(sire uint64, matron uint64) error {
+func breedWith(sireID, matronID uint64) error {
+	if int(matronID) >= len(kitties) {
+		return fmt.Errorf("No kitty with this ID %d available.", matronID)
+	}
+
+	if int(sireID) >= len(kitties) {
+		return fmt.Errorf("No kitty with this ID %d available.", sireID)
+	}
+
+	matron := kitties[matronID]
+
+	matron.SiringWithID = sireID
+	triggerCooldown(matronID)
+	triggerCooldown(sireID)
+
+	sireAllowedToAddress[sireID] = ""
+	sireAllowedToAddress[matronID] = ""
+
+	owner := kittyIndexToOwner[matronID]
+
+	g_event["Pregnant"] = map[string]interface{}{"owner": owner, "matronID": matronID, "sireID": sireID, "matronCooldown": matron.CooldownEnd}
+
 	return nil
 }
 
-func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterface, sireID uint64, matronID uint64) error {
-	return nil
+func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterface, sireID, matronID uint64) error {
+	if int(matronID) >= len(kitties) {
+		return fmt.Errorf("No kitty with this ID %d available.", matronID)
+	}
+
+	if int(sireID) >= len(kitties) {
+		return fmt.Errorf("No kitty with this ID %d available.", sireID)
+	}
+
+	clientID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return err
+	}
+
+	matronOwner := kittyIndexToOwner[matronID]
+
+	if matronOwner != clientID {
+		return fmt.Errorf("Caller must be the owner of the matron kitty.")
+	}
+
+	if ok, err := isSiringPermitted(matronID, sireID); err != nil || !ok {
+		return fmt.Errorf("Siring is not permitted for marton %d and sire %d.", matronID, sireID)
+	}
+
+	if ok, err := isReadyToBreed(matronID); err != nil || !ok {
+		return fmt.Errorf("Provided marton with id %d is not ready to breed.", matronID)
+	}
+
+	if ok, err := isReadyToBreed(sireID); err != nil || !ok {
+		return fmt.Errorf("Provided sire with id %d is not ready to breed.", sireID)
+	}
+
+	if ok, err := isValidMatingPair(sireID, matronID); err != nil || !ok {
+		return fmt.Errorf("Matron with id %d and sire with id %d are no valid mating pair. Shame on you! Don't try to breed these cats.", matronID, sireID)
+	}
+
+	return breedWith(sireID, matronID)
 }
 
-func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, matronID uint64) error {
-	return nil
+func mixGenes(matronGenes, sireGenes uint64) uint64 {
+	return matronGenes ^ sireGenes // ^ will implement xor
+}
+
+func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, matronID uint64) (uint64, error) {
+	if int(matronID) >= len(kitties) {
+		return 0, fmt.Errorf("No kitty with this ID available.")
+	}
+
+	matron := kitties[matronID]
+
+	if ok, err := isReadyToGiveBirth(matron); err != nil || !ok {
+		return 0, fmt.Errorf("Matron is not yet ready to give birth.")
+	}
+
+	sireID := matron.SiringWithID
+	sire := kitties[sireID]
+
+	parentGeneration := matron.Generation
+	if parentGeneration < sire.Generation {
+		parentGeneration = sire.Generation
+	}
+
+	childGenes := mixGenes(matron.Genes, sire.Genes)
+	owner := kittyIndexToOwner[matronID]
+	kittyID, err := createKitty(ctx, matronID, sireID, parentGeneration+1, childGenes, owner)
+	if err != nil {
+		return 0, err
+	}
+
+	matron.SiringWithID = 0
+
+	return kittyID, nil
 }
 
 func (c *KittyContract) TransferFrom(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
