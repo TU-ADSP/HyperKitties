@@ -120,39 +120,72 @@ func createKitty(ctx contractapi.TransactionContextInterface, matronID, sireID, 
 }
 
 func owns(kittyID uint64, owner string) (bool, error) {
-	return false, nil
+	return kittyIndexToOwner[kittyID] == owner, nil
 }
 
 func approvedFor(kittyID uint64, account string) (bool, error) {
-	return false, nil
+	return kittyIndexToApproved[kittyID] == account, nil
 }
 
-func approve(kittdyID uint64, account string) error {
+func approve(kittyID uint64, account string) error {
+	kittyIndexToApproved[kittyID] = account
 	return nil
 }
 
 func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, to string, kittyID uint64) error {
+	from, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return err
+	}
+	isOwner, err := owns(kittyID, from)
+	if err != nil {
+		return err
+	}
+	if isOwner {
+		transfer(ctx, from, to, kittyID)
+	}
 	return nil
 }
 
-func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kittdyID uint64, account string) error {
-	return nil
+func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kittyID uint64, account string) error {
+	userID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return err
+	}
+	isOwner, err := owns(kittyID, userID)
+	if err != nil {
+		return err
+	}
+	if isOwner {
+		err = approve(kittyID, account)
+	}
+	return err
 }
 
-func (c *KittyContract) TotalSuppy(ctx contractapi.TransactionContextInterface) uint64 {
-	return 0
+func (c *KittyContract) TotalSuppy(ctx contractapi.TransactionContextInterface) (uint64, error) {
+	return uint64(len(kittyIndexToOwner)), nil
 }
 
 func (c *KittyContract) OwnerOf(ctx contractapi.TransactionContextInterface, kittyID uint64) (string, error) {
-	return "", nil
+	if int(kittyID) >= len(kittyIndexToOwner) {
+		return "", fmt.Errorf("Index too large. KittID %d not known.", kittyID)
+	}
+	owner := kittyIndexToOwner[kittyID]
+	return owner, nil
 }
 
-func (c *KittyContract) TokensOfOwner(owner string) ([]uint64, error) {
-	return []uint64{}, nil
+func (c *KittyContract) TokensOfOwner(ctx contractapi.TransactionContextInterface, owner string) ([]uint64, error) {
+	var supply []uint64 = []uint64{}
+	for k, v := range kittyIndexToOwner {
+		if v == owner {
+			supply = append(supply, uint64(k))
+		}
+	}
+	return supply, nil
 }
 
-func (c *KittyContract) PregnantKitties() (uint64, error) {
-	return 0, nil
+func (c *KittyContract) PregnantKitties(ctx contractapi.TransactionContextInterface) (uint64, error) {
+	return pregnantKitties, nil
 }
 
 func isReadyToGiveBirth(ctx contractapi.TransactionContextInterface, matron Kitty) (bool, error) {
