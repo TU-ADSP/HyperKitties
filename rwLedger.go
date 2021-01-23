@@ -26,7 +26,7 @@ func (e JsonUnmarshalError) Error() string {
 func readFromLedger(ctx contractapi.TransactionContextInterface, key string) error {
 	log.Println("Entering readFromLedger with key: " + key + "...")
 	assetJSON, err := ctx.GetStub().GetState(key)
-	if err != nil {
+	if err != nil || len(assetJSON) == 0 {
 		return GetStateError{err}
 	}
 	log.Println(string(assetJSON))

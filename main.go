@@ -123,8 +123,8 @@ func owns(kittyID uint64, owner string) (bool, error) {
 	return kittyIndexToOwner[kittyID] == owner, nil
 }
 
-func approvedFor(kittyID uint64, account string) (bool, error) {
-	return kittyIndexToApproved[kittyID] == account, nil
+func approvedFor(kittyID uint64, account string) bool {
+	return kittyIndexToApproved[kittyID] == account
 }
 
 func approve(kittyID uint64, account string) error {
@@ -137,14 +137,15 @@ func (c *KittyContract) Transfer(ctx contractapi.TransactionContextInterface, to
 	if err != nil {
 		return err
 	}
+	from = getClientID(from)
 	isOwner, err := owns(kittyID, from)
 	if err != nil {
 		return err
 	}
 	if isOwner {
-		transfer(ctx, from, to, kittyID)
+		return transfer(ctx, from, to, kittyID)
 	}
-	return nil
+	return fmt.Errorf("Transfer initiated not by owner. Caller: %s, Owner: %s", from, kittyIndexToOwner[kittyID])
 }
 
 func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kittyID uint64, account string) error {
@@ -152,18 +153,19 @@ func (c *KittyContract) Approve(ctx contractapi.TransactionContextInterface, kit
 	if err != nil {
 		return err
 	}
+	userID = getClientID(userID)
 	isOwner, err := owns(kittyID, userID)
 	if err != nil {
 		return err
 	}
 	if isOwner {
-		err = approve(kittyID, account)
+		return approve(kittyID, account)
 	}
-	return err
+	return fmt.Errorf("Approve initiated not by owner. Caller: %s, Owner: %s", userID, kittyIndexToOwner[kittyID])
 }
 
-func (c *KittyContract) TotalSuppy(ctx contractapi.TransactionContextInterface) (uint64, error) {
-	return uint64(len(kittyIndexToOwner)), nil
+func (c *KittyContract) TotalSupply(ctx contractapi.TransactionContextInterface) (uint64, error) {
+	return uint64(len(kittyIndexToOwner)) - 1, nil
 }
 
 func (c *KittyContract) OwnerOf(ctx contractapi.TransactionContextInterface, kittyID uint64) (string, error) {
@@ -188,7 +190,7 @@ func (c *KittyContract) PregnantKitties(ctx contractapi.TransactionContextInterf
 	return pregnantKitties, nil
 }
 
-func isReadyToGiveBirth(ctx contractapi.TransactionContextInterface, matron Kitty) (bool, error) {
+func isReadyToGiveBirth(ctx contractapi.TransactionContextInterface, matron *Kitty) (bool, error) {
 	txTimestamp, err := ctx.GetStub().GetTxTimestamp()
 	if err != nil {
 		return false, err
@@ -262,6 +264,8 @@ func (c *KittyContract) ApproveSiring(ctx contractapi.TransactionContextInterfac
 		return err
 	}
 
+	clientID = getClientID(clientID)
+
 	ok, err := owns(kittyID, clientID)
 	if err != nil {
 		return err
@@ -270,7 +274,7 @@ func (c *KittyContract) ApproveSiring(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("Caller must be the owner of the matron kitty.")
 	}
 
-	sireAllowedToAddress[kittyID] = clientID
+	sireAllowedToAddress[kittyID] = siringPartner
 
 	return nil
 }
@@ -353,7 +357,7 @@ func breedWith(ctx contractapi.TransactionContextInterface, sireID, matronID uin
 		return fmt.Errorf("No kitty with this ID %d available.", sireID)
 	}
 
-	matron := kitties[matronID]
+	matron := &kitties[matronID]
 
 	matron.SiringWithID = sireID
 	triggerCooldown(ctx, matronID)
@@ -385,12 +389,14 @@ func (c *KittyContract) BreedWithAuto(ctx contractapi.TransactionContextInterfac
 		return err
 	}
 
+	clientID = getClientID(clientID)
+
 	matronOwner := kittyIndexToOwner[matronID]
 	matron := kitties[matronID]
 	sire := kitties[sireID]
 
 	if matronOwner != clientID {
-		return fmt.Errorf("Caller must be the owner of the matron kitty.")
+		return fmt.Errorf("Caller must be the owner of the matron kitty. Caller: %s, Owner: %s", clientID, matronOwner)
 	}
 
 	if ok, err := isSiringPermitted(matronID, sireID); err != nil || !ok {
@@ -421,7 +427,7 @@ func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, m
 		return 0, fmt.Errorf("No kitty with this ID available.")
 	}
 
-	matron := kitties[matronID]
+	matron := &kitties[matronID]
 
 	if ok, err := isReadyToGiveBirth(ctx, matron); err != nil || !ok {
 		return 0, fmt.Errorf("Matron is not yet ready to give birth.")
@@ -450,8 +456,17 @@ func (c *KittyContract) GiveBirth(ctx contractapi.TransactionContextInterface, m
 }
 
 func (c *KittyContract) TransferFrom(ctx contractapi.TransactionContextInterface, from, to string, kittyID uint64) error {
-	// TODO (hb237): extend the functionality of this function to match the ethereum implementation
-	return transfer(ctx, from, to, kittyID)
+	clientID, err := ctx.GetClientIdentity().GetID()
+	if err != nil {
+		return err
+	}
+	clientID = getClientID(clientID)
+
+	if approvedFor(kittyID, clientID) {
+		return transfer(ctx, from, to, kittyID)
+	}
+
+	return fmt.Errorf("Caller is not approved. Caller: %s", clientID)
 }
 
 func (c *KittyContract) CreateKitty(ctx contractapi.TransactionContextInterface, matronID, sireID, generation, genes uint64, owner string) error {

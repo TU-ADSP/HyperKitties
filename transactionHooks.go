@@ -65,12 +65,14 @@ func AfterTransaction(ctx contractapi.TransactionContextInterface) error {
 		return err
 	}
 
-	jsonPayload, err := json.Marshal(g_event)
-	if err != nil {
-		return err
-	}
-	if err := ctx.GetStub().SetEvent("HyperledgerEvent", jsonPayload); err != nil {
-		return err
+	if len(g_event) > 0 {
+		jsonPayload, err := json.Marshal(g_event)
+		if err != nil {
+			return err
+		}
+		if err := ctx.GetStub().SetEvent("HyperledgerEvent", jsonPayload); err != nil {
+			return err
+		}
 	}
 
 	return nil
